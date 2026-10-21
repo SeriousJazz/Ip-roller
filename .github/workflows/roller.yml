@@ -2,11 +2,11 @@ name: Auto IP Roller
 
 on:
   schedule:
-    # Запуск в 09:00 и 21:00 по Москве (06:00 и 18:00 UTC)
-    - cron: '0 6,18 * * *'
+    # Запуск в 09:00, 16:00 (для проверки!) и 21:00 по Москве (06:00, 13:00 и 18:00 UTC)
+    - cron: '0 6,13,18 * * *'
     # Запуск в 13:30 и 17:30 по Москве (10:30 и 14:30 UTC)
     - cron: '30 10,14 * * *'
-  workflow_dispatch: # Кнопка для ручного запуска в любой момент
+  workflow_dispatch:
 
 jobs:
   roll_ips:
@@ -14,14 +14,10 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Скачиваем код
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Устанавливаем библиотеку requests
         run: pip install requests
 
       - name: Крутим Selectel
         run: python -u selectel.py
-
-      # Если добавил файл timeweb.py, просто убери решетки (#) со следующих двух строчек:
-      # - name: Крутим Timeweb
-      #   run: python -u timeweb.py
