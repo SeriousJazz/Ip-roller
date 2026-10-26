@@ -2,7 +2,7 @@ name: Auto IP Roller
 
 on:
   schedule:
-    # Запуск каждые 3 часа (00:00, 03:00, 06:00, 09:00, 12:00, 15:00, 18:00, 21:00)
+    # Запуск каждые 3 часа
     - cron: '0 */3 * * *'
   workflow_dispatch:
 
@@ -18,8 +18,11 @@ jobs:
         run: pip install requests
 
       - name: Крутим Selectel
+        env:
+          ACCOUNT_ID: ${{ secrets.ACCOUNT_ID }}
+          PROJECT_ID: ${{ secrets.PROJECT_ID }}
+          SEL_USERNAME: ${{ secrets.SEL_USERNAME }}
+          SEL_PASSWORD: ${{ secrets.SEL_PASSWORD }}
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
         run: python -u selectel.py
-
-      # Если добавил файл timeweb.py, просто убери решетки (#) со следующих двух строчек:
-      # - name: Крутим Timeweb
-      #   run: python -u timeweb.py
