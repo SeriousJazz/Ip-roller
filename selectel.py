@@ -1,11 +1,15 @@
+import os
 import time
 import requests
 
-# === НАСТРОЙКИ АВТОРИЗАЦИИ SELECTEL ===
-ACCOUNT_ID = "726879"  # Твой 6-значный номер аккаунта
-PROJECT_ID = "f14fcb45c22f46d5a7824b507fa21ca1"  # UUID проекта в Облачной платформе
-USERNAME = "Shea"  # Логин сервисного пользователя
-PASSWORD = "^gUeSadPL.oFl#5:FHEr"  # Пароль сервисного пользователя
+# === ДАННЫЕ БЕРУТСЯ АВТОМАТИЧЕСКИ ИЗ СЕКРЕТОВ GITHUB ===
+ACCOUNT_ID = os.getenv("ACCOUNT_ID", "").strip()
+PROJECT_ID = os.getenv("PROJECT_ID", "").strip()
+USERNAME = os.getenv("SEL_USERNAME", "").strip()
+PASSWORD = os.getenv("SEL_PASSWORD", "").strip()
+
+TG_BOT_TOKEN = os.getenv("TG_BOT_TOKEN", "").strip()
+TG_CHAT_ID = os.getenv("TG_CHAT_ID", "").strip()
 
 # === НУЖНЫЕ ПРЕФИКСЫ IP ===
 TARGET_PREFIXES = (
@@ -21,15 +25,9 @@ TARGET_PREFIXES = (
     "5.178.85.",
 )
 
-MAX_ATTEMPTS_PER_RUN = 500  # Общее число попыток за запуск
-ATTEMPTS_PER_ZONE = (
-    10  # Сколько попыток подряд делать в одной зоне до переключения
-)
-DELAY_BETWEEN_ATTEMPTS = 5  # Пауза между попытками (сек)
-
-# Настройки Telegram (обязательно заполни для уведомлений)
-TG_BOT_TOKEN = "8876385443:AAFDbBNALp-N0AxlPVD_7EShHpBX0X_p7dU"
-TG_CHAT_ID = "521789263"
+MAX_ATTEMPTS_PER_RUN = 500
+ATTEMPTS_PER_ZONE = 10
+DELAY_BETWEEN_ATTEMPTS = 5
 
 AUTH_URL = "https://cloud.api.selcloud.ru/identity/v3/auth/tokens"
 
@@ -185,7 +183,6 @@ def main():
         send_tg_message(msg)
         return
 
-    # === ОПОВЕЩЕНИЕ В TELEGRAM О НАЧАЛЕ ПРОКРУТКИ ===
     start_msg = (
         f"🚀 Начинаем прокрутку IP в Selectel!\n"
         f"📍 Активные зоны: {', '.join(region_names)}\n"
