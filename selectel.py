@@ -26,7 +26,7 @@ TARGET_PREFIXES = (
 )
 
 MAX_ATTEMPTS_PER_RUN = 300
-ATTEMPTS_PER_ZONE = 5
+ATTEMPTS_PER_ZONE = 3
 DELAY_BETWEEN_ATTEMPTS = 5
 
 AUTH_URL = "https://cloud.api.selcloud.ru/identity/v3/auth/tokens"
