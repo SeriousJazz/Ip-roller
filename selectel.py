@@ -197,7 +197,7 @@ def main():
     print(f"\n{start_msg}")
     send_tg_message(start_msg)
 
-        attempt = 1
+    attempt = 1
     reg_index = 0
     zone_attempt = 0
     network_errors_count = 0  исходный счетчик сбоев сети для текущей зоны
