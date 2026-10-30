@@ -2,7 +2,7 @@ import os
 import time
 import requests
 
-# === ДАННЫЕ БЕРУТСЯ АВТОМАТИЧЕСКИ ИЗ СЕКРЕТОВ GITHUB ===
+# === ДАННЫЕ БЕРУТСЯ ИЗ СЕКРЕТОВ GITHUB ===
 ACCOUNT_ID = os.getenv("ACCOUNT_ID", "").strip()
 PROJECT_ID = os.getenv("PROJECT_ID", "").strip()
 USERNAME = os.getenv("SEL_USERNAME", "").strip()
@@ -25,9 +25,12 @@ TARGET_PREFIXES = (
     "5.178.85.",
 )
 
-MAX_ATTEMPTS_PER_RUN = 300
-ATTEMPTS_PER_ZONE = 3
-DELAY_BETWEEN_ATTEMPTS = 10
+# Жестко заданные зоны поиска
+TARGET_REGIONS = ["ru-1", "ru-2", "ru-3", "ru-9"]
+
+MAX_ATTEMPTS_PER_RUN = 300  # Общее число попыток за запуск
+ATTEMPTS_PER_ZONE = 3  # По 3 попытки в зоне перед переключением
+DELAY_BETWEEN_ATTEMPTS = 5  # Пауза между попытками (сек)
 
 AUTH_URL = "https://cloud.api.selcloud.ru/identity/v3/auth/tokens"
 
@@ -70,6 +73,7 @@ def get_keystone_session():
     token = resp.headers.get("X-Subject-Token")
     catalog = resp.json().get("token", {}).get("catalog", [])
 
+    # Собираем эндпоинты только для нужных зон из TARGET_REGIONS
     regions_map = {}
     for service in catalog:
         if service.get("type") == "network":
@@ -77,12 +81,12 @@ def get_keystone_session():
                 if ep.get("interface") == "public":
                     reg = ep.get("region_id", "")
                     url = ep.get("url", "").rstrip("/")
-                    if reg.startswith("ru-") and url:
+                    if reg in TARGET_REGIONS and url:
                         regions_map[reg] = url
 
     if not regions_map:
         raise RuntimeError(
-            "Не найдено ни одного региона ru-* в каталоге Selectel."
+            f"Не найдено ни одной зоны из списка {TARGET_REGIONS} в каталоге Selectel."
         )
 
     return token, regions_map
@@ -144,17 +148,19 @@ def cleanup_region_ips(headers, network_url, region_name):
 
 
 def main():
-    print("Авторизация в Selectel и поиск зон ru-*...")
+    print(
+        f"Авторизация в Selectel и проверка зон: {', '.join(TARGET_REGIONS)}..."
+    )
     token, regions_map = get_keystone_session()
     headers = {"X-Auth-Token": token, "Content-Type": "application/json"}
 
-    print(
-        f"Найдены российские зоны: {', '.join(sorted(regions_map.keys()))}"
-    )
-
     active_regions = {}
 
-    for reg, net_url in sorted(regions_map.items()):
+    for reg in TARGET_REGIONS:
+        if reg not in regions_map:
+            print(f"[-] Зона {reg} отсутствует в вашем аккаунте/каталоге.")
+            continue
+        net_url = regions_map[reg]
         try:
             existing = list_floating_ips(headers, net_url)
             for fip in existing:
@@ -178,14 +184,14 @@ def main():
 
     region_names = list(active_regions.keys())
     if not region_names:
-        msg = "⚠️ Не удалось запустить прокрутку: нет ни одной доступной зоны ru-*."
+        msg = "⚠️ Не удалось запустить прокрутку в Selectel: ни одна из зон (ru-1, ru-2, ru-3, ru-9) недоступна."
         print(msg)
         send_tg_message(msg)
         return
 
     start_msg = (
         f"🚀 Начинаем прокрутку IP в Selectel!\n"
-        f"📍 Активные зоны: {', '.join(region_names)}\n"
+        f"📍 Зоны: {', '.join(region_names)}\n"
         f"🔄 План: до {MAX_ATTEMPTS_PER_RUN} попыток (по {ATTEMPTS_PER_ZONE} подряд в каждой зоне)."
     )
     print(f"\n{start_msg}")
@@ -233,7 +239,7 @@ def main():
                     if len(region_names) > 1:
                         next_reg = region_names[reg_index % len(region_names)]
                         print(
-                            f"\n[>>>] {ATTEMPTS_PER_ZONE} попыток в {current_reg} позади. Переключаемся на зону {next_reg}..."
+                            f"\n[>>>] {ATTEMPTS_PER_ZONE} попытки в {current_reg} завершены. Переключаемся на зону {next_reg}..."
                         )
 
         except requests.exceptions.HTTPError as err:
@@ -257,7 +263,7 @@ def main():
                     time.sleep(5)
             elif code in (413, 429):
                 print(
-                    f"[*] Лимит запросов в зоне {current_reg}! Досрочно переключаемся на следующую зону и ждем 20 сек..."
+                    f"[*] Лимит запросов в зоне {current_reg}! Переключаемся на следующую и ждем 20 сек..."
                 )
                 cleanup_region_ips(headers, net_url, current_reg)
                 zone_attempt = 0
@@ -278,7 +284,9 @@ def main():
         time.sleep(DELAY_BETWEEN_ATTEMPTS)
 
     if not region_names:
-        print("\n[!] Во всех зонах ru-* закончилась квота на плавающие IP.")
+        print(
+            "\n[!] Во всех указанных зонах (ru-1, ru-2, ru-3, ru-9) закончилась квота на плавающие IP."
+        )
     else:
         print(f"\nВсе {MAX_ATTEMPTS_PER_RUN} попыток завершены.")
 
