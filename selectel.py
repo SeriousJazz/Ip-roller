@@ -200,7 +200,7 @@ def main():
     attempt = 1
     reg_index = 0
     zone_attempt = 0
-    network_errors_count = 0  исходный счетчик сбоев сети для текущей зоны
+    network_errors_count = 0  # исходный счетчик сбоев сети для текущей зоны
 
     while attempt <= MAX_ATTEMPTS_PER_RUN and region_names:
         current_reg = region_names[reg_index % len(region_names)]
