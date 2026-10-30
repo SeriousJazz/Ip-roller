@@ -197,9 +197,10 @@ def main():
     print(f"\n{start_msg}")
     send_tg_message(start_msg)
 
-    attempt = 1
+        attempt = 1
     reg_index = 0
     zone_attempt = 0
+    network_errors_count = 0  исходный счетчик сбоев сети для текущей зоны
 
     while attempt <= MAX_ATTEMPTS_PER_RUN and region_names:
         current_reg = region_names[reg_index % len(region_names)]
@@ -214,6 +215,9 @@ def main():
             new_fip = create_floating_ip(headers, net_url, ext_net_id)
             ip_address = new_fip.get("floating_ip_address", "")
             fip_id = new_fip.get("id", "")
+
+            # Успешный ответ — сбрасываем счетчик сбоев сети
+            network_errors_count = 0
 
             print(f"[{current_reg}] Выпал IP: {ip_address}")
 
@@ -236,6 +240,7 @@ def main():
                 if zone_attempt >= ATTEMPTS_PER_ZONE:
                     zone_attempt = 0
                     reg_index += 1
+                    network_errors_count = 0
                     if len(region_names) > 1:
                         next_reg = region_names[reg_index % len(region_names)]
                         print(
@@ -246,6 +251,7 @@ def main():
             code = err.response.status_code
             text = err.response.text
             print(f"[!] [{current_reg}] Ошибка API (Код {code}): {text}")
+            network_errors_count = 0
 
             if code == 401:
                 print("[*] Обновляем токен авторизации...")
@@ -277,15 +283,33 @@ def main():
             continue
 
         except Exception as e:
-            print(f"[!] Сбой сети: {e}. Ждем 15 сек...")
-            time.sleep(15)
+            network_errors_count += 1
+            print(
+                f"[!] Сбой сети в зоне {current_reg} (подряд ошибок: {network_errors_count}): {e}"
+            )
+
+            # Если зона зависла и не отвечает больше 3 раз подряд — исключаем её из списка на этот прогон!
+            if network_errors_count >= 3:
+                print(
+                    f"[!] Зона {current_reg} полностью зависла (таймауты сети). Исключаем её из текущего запуска!"
+                )
+                region_names.remove(current_reg)
+                zone_attempt = 0
+                reg_index = 0
+                network_errors_count = 0
+                send_tg_message(
+                    f"⚠️ Selectel: зона {current_reg} зависла (ошибки сети), исключаем её из текущего прогона."
+                )
+                time.sleep(5)
+            else:
+                time.sleep(15)
             continue
 
         time.sleep(DELAY_BETWEEN_ATTEMPTS)
 
     if not region_names:
         print(
-            "\n[!] Во всех указанных зонах (ru-1, ru-2, ru-3, ru-9) закончилась квота на плавающие IP."
+            "\n[!] Во всех доступных зонах Selectel произошли сбои или закончилась квота."
         )
     else:
         print(f"\nВсе {MAX_ATTEMPTS_PER_RUN} попыток завершены.")
