@@ -30,7 +30,7 @@ TARGET_REGIONS = ["ru-1", "ru-2", "ru-3", "ru-9"]
 
 MAX_ATTEMPTS_PER_RUN = 300  # Общее число попыток за запуск
 ATTEMPTS_PER_ZONE = 3  # По 3 попытки в зоне перед переключением
-DELAY_BETWEEN_ATTEMPTS = 5  # Пауза между попытками (сек)
+DELAY_BETWEEN_ATTEMPTS = 10  # Пауза между попытками (сек)
 
 AUTH_URL = "https://cloud.api.selcloud.ru/identity/v3/auth/tokens"
 
